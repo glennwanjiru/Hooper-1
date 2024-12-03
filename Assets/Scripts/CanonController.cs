@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using System.Collections;
 using System.Collections.Generic;
 
 public class BasketballCannonController : MonoBehaviour
@@ -37,6 +38,7 @@ public class BasketballCannonController : MonoBehaviour
     public Text ballsRemainingText;
     public Text currentScoreText;
     public Text highScoreText;
+    public Text statusText;
     public int maxBalls = 5;
     public int scoreNetPoints = 3;
     public int hoopPoints = 1;
@@ -49,6 +51,39 @@ public class BasketballCannonController : MonoBehaviour
     private int currentScore = 0;
     private int highScore = 0;
     private List<GameObject> trajectoryPoints = new List<GameObject>();
+
+    // Humorous message arrays
+    private string[] shootingPrompts = new string[] {
+        "Aim high, shoot higher!",
+        "Channel your inner basketball legend!",
+        "Precision is key, young hoopster!",
+        "Flex those virtual muscles!",
+        "Make Newton proud with some physics magic!"
+    };
+
+    private string[] successMessages = new string[] {
+        "Boom! Nothing but net!",
+        "Stephen Curry who?",
+        "Michael Jordan would be impressed!",
+        "Swish! You're on fire!",
+        "Basketball genius at work!"
+    };
+
+    private string[] missMessages = new string[] {
+        "Oops! Physics is hard...",
+        "Gravity: 1, You: 0",
+        "Well, that didn't go as planned!",
+        "Air ball! Try again, champ!",
+        "The rim is laughing at you..."
+    };
+
+    private string[] lastBallMessages = new string[] {
+        "Last chance, basketball hero!",
+        "Do or die moment!",
+        "Everything rides on this shot!",
+        "The crowd is holding its breath...",
+        "No pressure... just kidding, ALL the pressure!"
+    };
 
     void Start()
     {
@@ -68,6 +103,7 @@ public class BasketballCannonController : MonoBehaviour
         UpdateBallUI();
         UpdateScoreUI();
         SetupPowerSlider();
+        UpdateStatusText("Ssup Hooper! Let's shoot some hoops!");
     }
 
     void SetupPowerSlider()
@@ -131,6 +167,10 @@ public class BasketballCannonController : MonoBehaviour
             Shoot();
             ResetSlider();
         }
+        else if (ballsRemaining <= 0)
+        {
+            UpdateStatusText("Game Over! No more balls left!");
+        }
     }
 
     void Shoot()
@@ -139,6 +179,16 @@ public class BasketballCannonController : MonoBehaviour
 
         ballsRemaining--;
         UpdateBallUI();
+
+        // Add status text for shooting
+        if (ballsRemaining == 0)
+        {
+            UpdateStatusText(lastBallMessages[Random.Range(0, lastBallMessages.Length)]);
+        }
+        else
+        {
+            UpdateStatusText(shootingPrompts[Random.Range(0, shootingPrompts.Length)]);
+        }
 
         PlayShootEffects();
 
@@ -216,9 +266,12 @@ public class BasketballCannonController : MonoBehaviour
 
         // Add score and play effects
         AddScore(points);
+
+        // Add status text for successful shot
+        UpdateStatusText(successMessages[Random.Range(0, successMessages.Length)]);
+
         PlayScoreEffects(ball);
     }
-
 
     void AddScore(int points)
     {
@@ -238,7 +291,7 @@ public class BasketballCannonController : MonoBehaviour
     {
         if (ballsRemainingText != null)
         {
-            ballsRemainingText.text = "Balls Remaining: " + ballsRemaining;
+            ballsRemainingText.text = "Balls: " + ballsRemaining;
         }
 
         if (powerSlider != null)
@@ -259,9 +312,25 @@ public class BasketballCannonController : MonoBehaviour
             highScore = currentScore;
             if (highScoreText != null)
             {
-                highScoreText.text = "High Score: " + highScore;
+                highScoreText.text = "B.Score: " + highScore;
             }
         }
+    }
+
+    void UpdateStatusText(string message)
+    {
+        if (statusText != null)
+        {
+            StartCoroutine(AnimateStatusText(message));
+        }
+    }
+
+    IEnumerator AnimateStatusText(string message)
+    {
+        statusText.text = message;
+        statusText.color = Color.yellow;
+        yield return new WaitForSeconds(2f);
+        statusText.color = Color.white;
     }
 
     float WrapAngle(float angle)
@@ -300,5 +369,4 @@ public class BasketballCannonController : MonoBehaviour
             }
         }
     }
-
 }

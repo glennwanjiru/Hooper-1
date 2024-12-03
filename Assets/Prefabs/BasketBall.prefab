@@ -12,10 +12,10 @@ GameObject:
   - component: {fileID: 3928974039554343211}
   - component: {fileID: 3118369408885582481}
   - component: {fileID: 8549005936955560637}
-  - component: {fileID: -3446850991588934616}
   - component: {fileID: 1173961616551103794}
+  - component: {fileID: 1407365203870099374}
   m_Layer: 0
-  m_Name: Ball 3
+  m_Name: BasketBall
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -113,33 +113,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &-3446850991588934616
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6799689086043401170}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1eda91687a73a1d42aa91596e2a71c9c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gameCamera: {fileID: 0}
-  swipeTrailPrefab: {fileID: 725248732440317398, guid: 8dc8ce2fa58a4d64591c408a16950503,
-    type: 3}
-  trajectoryLinePrefab: {fileID: 725248732440317398, guid: 8dc8ce2fa58a4d64591c408a16950503,
-    type: 3}
-  forceMultiplier: 10
-  maxSwipeForce: 50
-  minSwipeDistance: 1
-  shotArcHeight: 1
-  trajectoryResolution: 67
-  trajectoryLineWidth: 0.2
-  trajectoryLineColor: {r: 0.675166, g: 0.9433962, b: 0.45834818, a: 0.4627451}
-  trajectoryLineMaterial: {fileID: 0}
-  showDebugLogs: 1
-  drawDebugLines: 1
 --- !u!135 &1173961616551103794
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -161,3 +134,16 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.44443077
   m_Center: {x: -0.000002577901, y: -0.00000064074993, z: 0}
+--- !u!114 &1407365203870099374
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6799689086043401170}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ab8023face2c8548bb420345dd3e3a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  destroyTime: 5
