@@ -1,76 +1,86 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using System.Collections.Generic;
 
-public class CannonController : MonoBehaviour
+public class BasketballCannonController : MonoBehaviour
 {
     [Header("Cannon Components")]
-    public Transform cannonPivot; // Rotating part of the cannon
-    public Transform firePoint; // The point where the ball is shot
-    public GameObject basketballPrefab; // Basketball prefab
-    public GameObject trajectoryPointPrefab; // Prefab for trajectory points
-    public ParticleSystem shootParticleEffect; // Particle effect when shooting
-    public ParticleSystem scoreParticleEffect; // Particle effect when score is made
-    public AudioSource shootAudio; // Audio source for shooting sound
-    public AudioSource scoreAudio; // Audio source for score sound
+    public Transform cannonPivot;
+    public Transform firePoint;
+    public GameObject basketballPrefab;
+    public GameObject trajectoryPointPrefab;
+    public ParticleSystem shootParticleEffect;
+    public ParticleSystem scoreParticleEffect;
+    public AudioSource shootAudio;
+    public AudioSource scoreAudio;
 
     [Header("Shooting Controls")]
-    public Slider powerSlider; // UI slider for shot power
-    public float maxShotPower = 20f; // Maximum shot power
-    public int trajectoryResolution = 50; // Number of trajectory points
-    public float trajectoryTimeStep = 0.1f; // Time step for trajectory prediction
-    public float maxTrajectoryLength = 50f; // Maximum length of the trajectory line (in units)
+    public Slider powerSlider;
+    public float maxShotPower = 20f;
+    public int trajectoryResolution = 50;
+    public float trajectoryTimeStep = 0.1f;
+    public float maxTrajectoryLength = 50f;
 
     [Header("Physics")]
-    public float ballMass = 0.6f; // Basketball mass
-    public float gravity = -9.81f; // Gravity in simulation
+    public float ballMass = 0.6f;
+    public float gravity = -9.81f;
 
     [Header("Cannon Rotation")]
-    public float rotationSensitivity = 0.2f; // Sensitivity of cannon rotation
-    public float minVerticalRotation = -10f; // Minimum vertical rotation angle
-    public float maxVerticalRotation = 45f; // Maximum vertical rotation angle
-    public float minHorizontalRotation = -45f; // Minimum horizontal rotation angle
-    public float maxHorizontalRotation = 45f; // Maximum horizontal rotation angle
+    public float rotationSensitivity = 0.2f;
+    public float minVerticalRotation = -10f;
+    public float maxVerticalRotation = 45f;
+    public float minHorizontalRotation = -45f;
+    public float maxHorizontalRotation = 45f;
 
-    [Header("UI Elements")]
-    public Text ballsRemainingText; // Text to display balls remaining
-    public Text currentScoreText; // Text to display current score
-    public Text highScoreText; // Text to display high score
-    public int maxBalls = 5; // Maximum number of balls available for shooting
-    private int ballsRemaining; // Track the remaining balls
+    [Header("Game Settings")]
+    public Text ballsRemainingText;
+    public Text currentScoreText;
+    public Text highScoreText;
+    public int maxBalls = 5;
+    public int scoreNetPoints = 3;
+    public int hoopPoints = 1;
 
+    private Camera mainCamera;
     private Vector3 initialTouchPos;
     private bool isDragging = false;
     private bool isOverSlider = false;
+    private int ballsRemaining;
     private int currentScore = 0;
     private int highScore = 0;
-
     private List<GameObject> trajectoryPoints = new List<GameObject>();
-
-    private Camera mainCamera;
 
     void Start()
     {
-        // Initialize the main camera
-        mainCamera = Camera.main;
+        InitializeGame();
+    }
 
-        // Initialize slider
+    void Update()
+    {
+        HandleCannonRotation();
+        HandleShooting();
+    }
+
+    void InitializeGame()
+    {
+        mainCamera = Camera.main;
+        ballsRemaining = maxBalls;
+        UpdateBallUI();
+        UpdateScoreUI();
+        SetupPowerSlider();
+    }
+
+    void SetupPowerSlider()
+    {
         if (powerSlider != null)
         {
             powerSlider.minValue = 0f;
             powerSlider.maxValue = 1f;
             powerSlider.value = 0;
             powerSlider.onValueChanged.AddListener(UpdateTrajectory);
-            AddSliderEvents();
 
-            // Add EventTrigger to detect if the mouse is over the slider
-            EventTrigger eventTrigger = powerSlider.GetComponent<EventTrigger>();
-            if (eventTrigger == null)
-            {
-                eventTrigger = powerSlider.gameObject.AddComponent<EventTrigger>();
-            }
+            // Add event trigger to detect slider interaction
+            EventTrigger eventTrigger = powerSlider.gameObject.AddComponent<EventTrigger>();
 
             EventTrigger.Entry pointerEnterEntry = new EventTrigger.Entry();
             pointerEnterEntry.eventID = EventTriggerType.PointerEnter;
@@ -82,33 +92,9 @@ public class CannonController : MonoBehaviour
             pointerExitEntry.callback.AddListener((data) => { isOverSlider = false; });
             eventTrigger.triggers.Add(pointerExitEntry);
         }
-
-        // Initialize UI
-        ballsRemaining = maxBalls;
-        UpdateBallUI();
-
-        // Ensure components are assigned
-        if (cannonPivot == null) Debug.LogError("Cannon Pivot is not assigned!");
-        if (firePoint == null) Debug.LogError("Fire Point is not assigned!");
     }
 
-    void Update()
-    {
-        // Prevent rotation if over slider
-        if (!isOverSlider)
-        {
-            HandleCannonRotation();
-        }
-
-        // Shoot when the slider is released and we have balls remaining
-        if (Input.GetMouseButtonUp(0) && powerSlider != null && powerSlider.value > 0 && ballsRemaining > 0)
-        {
-            Shoot();
-            ResetSlider();
-        }
-    }
-
-    private void HandleCannonRotation()
+    void HandleCannonRotation()
     {
         if (cannonPivot == null || mainCamera == null || isOverSlider) return;
 
@@ -138,17 +124,23 @@ public class CannonController : MonoBehaviour
         if (Input.GetMouseButtonUp(0)) isDragging = false;
     }
 
-    private void Shoot()
+    void HandleShooting()
+    {
+        if (Input.GetMouseButtonUp(0) && powerSlider != null && powerSlider.value > 0 && ballsRemaining > 0)
+        {
+            Shoot();
+            ResetSlider();
+        }
+    }
+
+    void Shoot()
     {
         if (basketballPrefab == null || firePoint == null) return;
 
-        // Decrease the number of balls remaining
         ballsRemaining--;
         UpdateBallUI();
 
-        // Play shooting sound and particle effect
-        if (shootAudio != null) shootAudio.Play();
-        if (shootParticleEffect != null) shootParticleEffect.Play();
+        PlayShootEffects();
 
         float shotPower = powerSlider.value * maxShotPower;
         GameObject ball = Instantiate(basketballPrefab, firePoint.position, Quaternion.identity);
@@ -157,18 +149,28 @@ public class CannonController : MonoBehaviour
         if (rb != null)
         {
             rb.mass = ballMass;
-            rb.AddForce(firePoint.forward * shotPower, ForceMode.Impulse); // Direct force based on power slider
+            rb.AddForce(firePoint.forward * shotPower, ForceMode.Impulse);
         }
+
+        // Add collision detection script to the ball
+        BasketballCollision collisionScript = ball.AddComponent<BasketballCollision>();
+        collisionScript.SetCannonController(this);
 
         ClearTrajectoryPoints();
     }
 
-    private void ResetSlider()
+    void PlayShootEffects()
+    {
+        if (shootAudio != null) shootAudio.Play();
+        if (shootParticleEffect != null) shootParticleEffect.Play();
+    }
+
+    void ResetSlider()
     {
         if (powerSlider != null) powerSlider.value = 0;
     }
 
-    private void UpdateTrajectory(float sliderValue)
+    void UpdateTrajectory(float sliderValue)
     {
         ClearTrajectoryPoints();
 
@@ -184,7 +186,6 @@ public class CannonController : MonoBehaviour
             float time = i * trajectoryTimeStep;
             Vector3 position = CalculateTrajectoryPoint(startPosition, startVelocity, time);
 
-            // Calculate distance from last point and check if we exceeded max length
             totalDistance += Vector3.Distance(lastPosition, position);
             if (totalDistance > maxTrajectoryLength) break;
 
@@ -194,14 +195,13 @@ public class CannonController : MonoBehaviour
         }
     }
 
-    private Vector3 CalculateTrajectoryPoint(Vector3 startPosition, Vector3 startVelocity, float time)
+    Vector3 CalculateTrajectoryPoint(Vector3 startPosition, Vector3 startVelocity, float time)
     {
-        // Gravity effect is applied downward over time
         Vector3 gravityEffect = new Vector3(0, gravity * time * time * 0.5f, 0);
         return startPosition + startVelocity * time + gravityEffect;
     }
 
-    private void ClearTrajectoryPoints()
+    void ClearTrajectoryPoints()
     {
         foreach (GameObject point in trajectoryPoints)
         {
@@ -210,95 +210,96 @@ public class CannonController : MonoBehaviour
         trajectoryPoints.Clear();
     }
 
-    private void OnDrawGizmos()
+    public void OnBallCollision(GameObject ball, string tag)
     {
-        if (firePoint != null && powerSlider != null)
+        if (ball == null) return;
+
+        switch (tag)
         {
-            float shotPower = powerSlider.value * maxShotPower;
-            Vector3 startPosition = firePoint.position;
-            Vector3 startVelocity = firePoint.forward * shotPower;
+            case "ScoreNet":
+                AddScore(scoreNetPoints);
+                PlayScoreEffects(ball);
+                break;
 
-            Gizmos.color = Color.green;
-            float totalDistance = 0f;
-            Vector3 lastPosition = startPosition;
-
-            for (int i = 0; i < trajectoryResolution - 1; i++)
-            {
-                float time1 = i * trajectoryTimeStep;
-                float time2 = (i + 1) * trajectoryTimeStep;
-
-                Vector3 point1 = CalculateTrajectoryPoint(startPosition, startVelocity, time1);
-                Vector3 point2 = CalculateTrajectoryPoint(startPosition, startVelocity, time2);
-
-                // Calculate distance between points and check if max length is reached
-                totalDistance += Vector3.Distance(lastPosition, point1);
-                if (totalDistance > maxTrajectoryLength) break;
-
-                Gizmos.DrawLine(point1, point2);
-                lastPosition = point2;
-            }
+            case "Hoop":
+                AddScore(hoopPoints);
+                PlayScoreEffects(ball);
+                break;
         }
     }
 
-    // Update UI for balls remaining
-    private void UpdateBallUI()
+    void AddScore(int points)
+    {
+        currentScore += points;
+        UpdateScoreUI();
+    }
+
+    void PlayScoreEffects(GameObject ball)
+    {
+        if (scoreAudio != null) scoreAudio.Play();
+        if (scoreParticleEffect != null) scoreParticleEffect.Play();
+
+        Destroy(ball);
+    }
+
+    void UpdateBallUI()
     {
         if (ballsRemainingText != null)
         {
             ballsRemainingText.text = "Balls Remaining: " + ballsRemaining;
         }
 
-        if (ballsRemaining == 0)
+        if (powerSlider != null)
         {
-            // Disable shooting when no balls are left
-            powerSlider.interactable = false;
-        }
-        else
-        {
-            powerSlider.interactable = true;
+            powerSlider.interactable = ballsRemaining > 0;
         }
     }
 
-    // Call this function when a basket is scored
-    public void OnScore(GameObject ball, string tag)
+    void UpdateScoreUI()
     {
-        // Check if the ball hits the ScoreNet and whether it has passed through the ring
-        if (tag == "ScoreNet")
+        if (currentScoreText != null)
         {
-            currentScore += 10; // Or any other score increment logic
-            UpdateScoreUI();
-
-            if (scoreAudio != null) scoreAudio.Play();
-            if (scoreParticleEffect != null) scoreParticleEffect.Play();
-
-            // Destroy the ball after scoring
-            Destroy(ball);
+            currentScoreText.text = "Score: " + currentScore;
         }
-    }
 
-    private void UpdateScoreUI()
-    {
-        if (currentScoreText != null) currentScoreText.text = "Score: " + currentScore;
-        if (highScore < currentScore)
+        if (currentScore > highScore)
         {
             highScore = currentScore;
-            if (highScoreText != null) highScoreText.text = "High Score: " + highScore;
+            if (highScoreText != null)
+            {
+                highScoreText.text = "High Score: " + highScore;
+            }
         }
     }
 
-    private float WrapAngle(float angle)
+    float WrapAngle(float angle)
     {
-        // Normalize the angle to be between -180 and 180
         if (angle > 180) angle -= 360;
         else if (angle < -180) angle += 360;
         return angle;
     }
 
-    private void AddSliderEvents()
+    // Inner class for ball collision detection
+    private class BasketballCollision : MonoBehaviour
     {
-        if (powerSlider != null)
+        private BasketballCannonController cannonController;
+
+        public void SetCannonController(BasketballCannonController controller)
         {
-            powerSlider.onValueChanged.AddListener(UpdateTrajectory);
+            cannonController = controller;
+        }
+
+        void OnCollisionEnter(Collision collision)
+        {
+            // Check if the cannon controller is assigned
+            if (cannonController == null) return;
+
+            // Check if the collision object has a specific tag
+            if (collision.gameObject.CompareTag("ScoreNet") || collision.gameObject.CompareTag("Hoop"))
+            {
+                // Call the OnBallCollision method of the CannonController
+                cannonController.OnBallCollision(gameObject, collision.gameObject.tag);
+            }
         }
     }
 }
