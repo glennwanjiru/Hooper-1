@@ -210,23 +210,15 @@ public class BasketballCannonController : MonoBehaviour
         trajectoryPoints.Clear();
     }
 
-    public void OnBallCollision(GameObject ball, string tag)
+    public void OnBallCollision(GameObject ball, string tag, int points)
     {
         if (ball == null) return;
 
-        switch (tag)
-        {
-            case "ScoreNet":
-                AddScore(scoreNetPoints);
-                PlayScoreEffects(ball);
-                break;
-
-            case "Hoop":
-                AddScore(hoopPoints);
-                PlayScoreEffects(ball);
-                break;
-        }
+        // Add score and play effects
+        AddScore(points);
+        PlayScoreEffects(ball);
     }
+
 
     void AddScore(int points)
     {
@@ -283,6 +275,7 @@ public class BasketballCannonController : MonoBehaviour
     private class BasketballCollision : MonoBehaviour
     {
         private BasketballCannonController cannonController;
+        private bool hasHitHoop = false; // Track if the ball has hit the Hoop
 
         public void SetCannonController(BasketballCannonController controller)
         {
@@ -295,11 +288,17 @@ public class BasketballCannonController : MonoBehaviour
             if (cannonController == null) return;
 
             // Check if the collision object has a specific tag
-            if (collision.gameObject.CompareTag("ScoreNet") || collision.gameObject.CompareTag("Hoop"))
+            if (collision.gameObject.CompareTag("Hoop"))
             {
-                // Call the OnBallCollision method of the CannonController
-                cannonController.OnBallCollision(gameObject, collision.gameObject.tag);
+                hasHitHoop = true; // Mark that the ball has hit the Hoop
+            }
+            else if (collision.gameObject.CompareTag("ScoreNet"))
+            {
+                // Calculate score based on whether the Hoop was hit
+                int points = hasHitHoop ? cannonController.hoopPoints : cannonController.scoreNetPoints;
+                cannonController.OnBallCollision(gameObject, collision.gameObject.tag, points);
             }
         }
     }
+
 }
