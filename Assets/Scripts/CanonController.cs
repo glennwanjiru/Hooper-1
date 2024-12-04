@@ -13,8 +13,17 @@ public class BasketballCannonController : MonoBehaviour
     public GameObject trajectoryPointPrefab;
     public ParticleSystem shootParticleEffect;
     public ParticleSystem scoreParticleEffect;
-    public AudioSource shootAudio;
-    public AudioSource scoreAudio;
+
+    [Header("Audio Clips")]
+    public AudioClip shootSound;
+    public AudioClip scoreSound;
+    public AudioClip missSound;
+    public AudioClip bounceSound;
+    public AudioClip lastBallSound;
+    public AudioClip buttonClickSound;
+
+    [Header("Audio Settings")]
+    public float audioVolume = 0.5f;
 
     [Header("Shooting Controls")]
     public Slider powerSlider;
@@ -43,6 +52,7 @@ public class BasketballCannonController : MonoBehaviour
     public int scoreNetPoints = 3;
     public int hoopPoints = 1;
 
+    private const string HIGH_SCORE_KEY = "BasketballHighScore";
     private Camera mainCamera;
     private Vector3 initialTouchPos;
     private bool isDragging = false;
@@ -52,7 +62,6 @@ public class BasketballCannonController : MonoBehaviour
     private int highScore = 0;
     private List<GameObject> trajectoryPoints = new List<GameObject>();
 
-    // Humorous message arrays
     private string[] shootingPrompts = new string[] {
         "Aim high, shoot higher!",
         "Channel your inner basketball legend!",
@@ -100,10 +109,19 @@ public class BasketballCannonController : MonoBehaviour
     {
         mainCamera = Camera.main;
         ballsRemaining = maxBalls;
+        highScore = PlayerPrefs.GetInt(HIGH_SCORE_KEY, 0);
         UpdateBallUI();
         UpdateScoreUI();
         SetupPowerSlider();
         UpdateStatusText("Ssup Hooper! Let's shoot some hoops!");
+    }
+
+    void PlaySound(AudioClip clip)
+    {
+        if (clip != null)
+        {
+            AudioSource.PlayClipAtPoint(clip, transform.position, audioVolume);
+        }
     }
 
     void SetupPowerSlider()
@@ -115,12 +133,14 @@ public class BasketballCannonController : MonoBehaviour
             powerSlider.value = 0;
             powerSlider.onValueChanged.AddListener(UpdateTrajectory);
 
-            // Add event trigger to detect slider interaction
             EventTrigger eventTrigger = powerSlider.gameObject.AddComponent<EventTrigger>();
 
             EventTrigger.Entry pointerEnterEntry = new EventTrigger.Entry();
             pointerEnterEntry.eventID = EventTriggerType.PointerEnter;
-            pointerEnterEntry.callback.AddListener((data) => { isOverSlider = true; });
+            pointerEnterEntry.callback.AddListener((data) => {
+                isOverSlider = true;
+                PlaySound(buttonClickSound);
+            });
             eventTrigger.triggers.Add(pointerEnterEntry);
 
             EventTrigger.Entry pointerExitEntry = new EventTrigger.Entry();
@@ -148,7 +168,6 @@ public class BasketballCannonController : MonoBehaviour
             Vector3 rotationDelta = new Vector3(-dragDelta.y, dragDelta.x, 0) * rotationSensitivity;
             cannonPivot.Rotate(rotationDelta, Space.Self);
 
-            // Clamp rotation
             Vector3 localEuler = cannonPivot.localEulerAngles;
             localEuler.x = Mathf.Clamp(WrapAngle(localEuler.x), minVerticalRotation, maxVerticalRotation);
             localEuler.y = Mathf.Clamp(WrapAngle(localEuler.y), minHorizontalRotation, maxHorizontalRotation);
@@ -170,6 +189,7 @@ public class BasketballCannonController : MonoBehaviour
         else if (ballsRemaining <= 0)
         {
             UpdateStatusText("Game Over! No more balls left!");
+            PlaySound(missSound);
         }
     }
 
@@ -180,10 +200,10 @@ public class BasketballCannonController : MonoBehaviour
         ballsRemaining--;
         UpdateBallUI();
 
-        // Add status text for shooting
         if (ballsRemaining == 0)
         {
             UpdateStatusText(lastBallMessages[Random.Range(0, lastBallMessages.Length)]);
+            PlaySound(lastBallSound);
         }
         else
         {
@@ -202,7 +222,6 @@ public class BasketballCannonController : MonoBehaviour
             rb.AddForce(firePoint.forward * shotPower, ForceMode.Impulse);
         }
 
-        // Add collision detection script to the ball
         BasketballCollision collisionScript = ball.AddComponent<BasketballCollision>();
         collisionScript.SetCannonController(this);
 
@@ -211,7 +230,7 @@ public class BasketballCannonController : MonoBehaviour
 
     void PlayShootEffects()
     {
-        if (shootAudio != null) shootAudio.Play();
+        PlaySound(shootSound);
         if (shootParticleEffect != null) shootParticleEffect.Play();
     }
 
@@ -264,27 +283,18 @@ public class BasketballCannonController : MonoBehaviour
     {
         if (ball == null) return;
 
-        // Add score and play effects
         AddScore(points);
-
-        // Add status text for successful shot
         UpdateStatusText(successMessages[Random.Range(0, successMessages.Length)]);
+        PlaySound(scoreSound);
 
-        PlayScoreEffects(ball);
+        if (scoreParticleEffect != null) scoreParticleEffect.Play();
+        Destroy(ball);
     }
 
     void AddScore(int points)
     {
         currentScore += points;
         UpdateScoreUI();
-    }
-
-    void PlayScoreEffects(GameObject ball)
-    {
-        if (scoreAudio != null) scoreAudio.Play();
-        if (scoreParticleEffect != null) scoreParticleEffect.Play();
-
-        Destroy(ball);
     }
 
     void UpdateBallUI()
@@ -310,6 +320,9 @@ public class BasketballCannonController : MonoBehaviour
         if (currentScore > highScore)
         {
             highScore = currentScore;
+            PlayerPrefs.SetInt(HIGH_SCORE_KEY, highScore);
+            PlayerPrefs.Save();
+
             if (highScoreText != null)
             {
                 highScoreText.text = "B.Score: " + highScore;
@@ -340,11 +353,10 @@ public class BasketballCannonController : MonoBehaviour
         return angle;
     }
 
-    // Inner class for ball collision detection
     private class BasketballCollision : MonoBehaviour
     {
         private BasketballCannonController cannonController;
-        private bool hasHitHoop = false; // Track if the ball has hit the Hoop
+        private bool hasHitHoop = false;
 
         public void SetCannonController(BasketballCannonController controller)
         {
@@ -353,17 +365,20 @@ public class BasketballCannonController : MonoBehaviour
 
         void OnCollisionEnter(Collision collision)
         {
-            // Check if the cannon controller is assigned
             if (cannonController == null) return;
 
-            // Check if the collision object has a specific tag
+            if (!collision.gameObject.CompareTag("Hoop") &&
+                !collision.gameObject.CompareTag("ScoreNet"))
+            {
+                cannonController.PlaySound(cannonController.bounceSound);
+            }
+
             if (collision.gameObject.CompareTag("Hoop"))
             {
-                hasHitHoop = true; // Mark that the ball has hit the Hoop
+                hasHitHoop = true;
             }
             else if (collision.gameObject.CompareTag("ScoreNet"))
             {
-                // Calculate score based on whether the Hoop was hit
                 int points = hasHitHoop ? cannonController.hoopPoints : cannonController.scoreNetPoints;
                 cannonController.OnBallCollision(gameObject, collision.gameObject.tag, points);
             }
