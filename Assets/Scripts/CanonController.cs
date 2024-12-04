@@ -60,6 +60,7 @@ public class BasketballCannonController : MonoBehaviour
     private int ballsRemaining;
     private int currentScore = 0;
     private int highScore = 0;
+    private bool gameOverSoundPlayed = false; // Tracks if the game-over sound has played.
     private List<GameObject> trajectoryPoints = new List<GameObject>();
 
     private string[] shootingPrompts = new string[] {
@@ -110,13 +111,14 @@ public class BasketballCannonController : MonoBehaviour
         mainCamera = Camera.main;
         ballsRemaining = maxBalls;
         highScore = PlayerPrefs.GetInt(HIGH_SCORE_KEY, 0);
+        gameOverSoundPlayed = false; // Reset the game-over sound flag.
         UpdateBallUI();
         UpdateScoreUI();
         SetupPowerSlider();
         UpdateStatusText("Ssup Hooper! Let's shoot some hoops!");
     }
 
-    void PlaySound(AudioClip clip)
+    public void PlaySound(AudioClip clip)
     {
         if (clip != null)
         {
@@ -186,8 +188,9 @@ public class BasketballCannonController : MonoBehaviour
             Shoot();
             ResetSlider();
         }
-        else if (ballsRemaining <= 0)
+        else if (ballsRemaining <= 0 && !gameOverSoundPlayed)
         {
+            gameOverSoundPlayed = true; // Prevent further execution of this block.
             UpdateStatusText("Game Over! No more balls left!");
             PlaySound(missSound);
         }
@@ -301,12 +304,7 @@ public class BasketballCannonController : MonoBehaviour
     {
         if (ballsRemainingText != null)
         {
-            ballsRemainingText.text = "Balls: " + ballsRemaining;
-        }
-
-        if (powerSlider != null)
-        {
-            powerSlider.interactable = ballsRemaining > 0;
+            ballsRemainingText.text = $"Balls: {ballsRemaining}";
         }
     }
 
@@ -314,19 +312,18 @@ public class BasketballCannonController : MonoBehaviour
     {
         if (currentScoreText != null)
         {
-            currentScoreText.text = "Score: " + currentScore;
+            currentScoreText.text = $"Score: {currentScore}";
         }
 
         if (currentScore > highScore)
         {
             highScore = currentScore;
             PlayerPrefs.SetInt(HIGH_SCORE_KEY, highScore);
-            PlayerPrefs.Save();
+        }
 
-            if (highScoreText != null)
-            {
-                highScoreText.text = "B.Score: " + highScore;
-            }
+        if (highScoreText != null)
+        {
+            highScoreText.text = $"High Score: {highScore}";
         }
     }
 
@@ -334,54 +331,12 @@ public class BasketballCannonController : MonoBehaviour
     {
         if (statusText != null)
         {
-            StartCoroutine(AnimateStatusText(message));
+            statusText.text = message;
         }
-    }
-
-    IEnumerator AnimateStatusText(string message)
-    {
-        statusText.text = message;
-        statusText.color = Color.yellow;
-        yield return new WaitForSeconds(2f);
-        statusText.color = Color.white;
     }
 
     float WrapAngle(float angle)
     {
-        if (angle > 180) angle -= 360;
-        else if (angle < -180) angle += 360;
-        return angle;
-    }
-
-    private class BasketballCollision : MonoBehaviour
-    {
-        private BasketballCannonController cannonController;
-        private bool hasHitHoop = false;
-
-        public void SetCannonController(BasketballCannonController controller)
-        {
-            cannonController = controller;
-        }
-
-        void OnCollisionEnter(Collision collision)
-        {
-            if (cannonController == null) return;
-
-            if (!collision.gameObject.CompareTag("Hoop") &&
-                !collision.gameObject.CompareTag("ScoreNet"))
-            {
-                cannonController.PlaySound(cannonController.bounceSound);
-            }
-
-            if (collision.gameObject.CompareTag("Hoop"))
-            {
-                hasHitHoop = true;
-            }
-            else if (collision.gameObject.CompareTag("ScoreNet"))
-            {
-                int points = hasHitHoop ? cannonController.hoopPoints : cannonController.scoreNetPoints;
-                cannonController.OnBallCollision(gameObject, collision.gameObject.tag, points);
-            }
-        }
+        return angle > 180 ? angle - 360 : angle;
     }
 }
