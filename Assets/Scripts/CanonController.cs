@@ -323,7 +323,7 @@ public class BasketballCannonController : MonoBehaviour
 
         if (highScoreText != null)
         {
-            highScoreText.text = $"High Score: {highScore}";
+            highScoreText.text = $"B.Score: {highScore}";
         }
     }
 
