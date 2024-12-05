@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement; // Add this for scene management
 using System.Collections;
 using System.Collections.Generic;
 
@@ -191,8 +192,7 @@ public class BasketballCannonController : MonoBehaviour
         else if (ballsRemaining <= 0 && !gameOverSoundPlayed)
         {
             gameOverSoundPlayed = true; // Prevent further execution of this block.
-            UpdateStatusText("Game Over! No more balls left!");
-            PlaySound(missSound);
+            EvaluateScore();
         }
     }
 
@@ -298,45 +298,73 @@ public class BasketballCannonController : MonoBehaviour
     {
         currentScore += points;
         UpdateScoreUI();
-    }
-
-    void UpdateBallUI()
-    {
-        if (ballsRemainingText != null)
-        {
-            ballsRemainingText.text = $"Balls: {ballsRemaining}";
-        }
-    }
-
-    void UpdateScoreUI()
-    {
-        if (currentScoreText != null)
-        {
-            currentScoreText.text = $"Score: {currentScore}";
-        }
-
         if (currentScore > highScore)
         {
             highScore = currentScore;
             PlayerPrefs.SetInt(HIGH_SCORE_KEY, highScore);
         }
+    }
 
-        if (highScoreText != null)
-        {
-            highScoreText.text = $"B.Score: {highScore}";
-        }
+    void UpdateBallUI()
+    {
+        if (ballsRemainingText != null) ballsRemainingText.text = "Balls: " + ballsRemaining;
+    }
+
+    void UpdateScoreUI()
+    {
+        if (currentScoreText != null) currentScoreText.text = "Score: " + currentScore;
+        if (highScoreText != null) highScoreText.text = "Best: " + highScore;
     }
 
     void UpdateStatusText(string message)
     {
-        if (statusText != null)
+        if (statusText != null) statusText.text = message;
+    }
+
+    void EvaluateScore()
+    {
+        float successRate = (float)currentScore / (maxBalls * scoreNetPoints);
+        if (successRate >= 0.333f)
         {
-            statusText.text = message;
+            UpdateStatusText("Congrats! Moving to the next level!");
+            PlaySound(scoreSound);
+            StartCoroutine(LoadNextScene());
+        }
+        else
+        {
+            UpdateStatusText("Try again! Replay the level!");
+            PlaySound(missSound);
+            StartCoroutine(ReloadCurrentScene());
         }
     }
 
+    IEnumerator LoadNextScene()
+    {
+        yield return new WaitForSeconds(2f); // Wait for 2 seconds to show message
+        int nextSceneIndex = SceneManager.GetActiveScene().buildIndex + 1;
+        if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
+        {
+            SceneManager.LoadScene(nextSceneIndex);
+        }
+        else
+        {
+            UpdateStatusText("You've completed all levels!"); // Final level message
+        }
+    }
+
+    IEnumerator ReloadCurrentScene()
+    {
+        yield return new WaitForSeconds(2f); // Wait for 2 seconds to show message
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    // To wrap angles for smooth rotation
     float WrapAngle(float angle)
     {
-        return angle > 180 ? angle - 360 : angle;
+        if (angle > 180)
+            angle -= 360;
+        else if (angle < -180)
+            angle += 360;
+        return angle;
     }
 }
