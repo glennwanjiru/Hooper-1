@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-using UnityEngine.SceneManagement; // Add this for scene management
+using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -49,7 +49,8 @@ public class BasketballCannonController : MonoBehaviour
     public Text currentScoreText;
     public Text highScoreText;
     public Text statusText;
-    public int maxBalls = 5;
+    public Text successfulShotsText; // New text element for successful shots
+    public int maxBalls = 10;
     public int scoreNetPoints = 3;
     public int hoopPoints = 1;
 
@@ -61,7 +62,8 @@ public class BasketballCannonController : MonoBehaviour
     private int ballsRemaining;
     private int currentScore = 0;
     private int highScore = 0;
-    private bool gameOverSoundPlayed = false; // Tracks if the game-over sound has played.
+    private int successfulShots = 0; // Tracks the number of successful shots
+    private bool gameOverSoundPlayed = false;
     private List<GameObject> trajectoryPoints = new List<GameObject>();
 
     private string[] shootingPrompts = new string[] {
@@ -112,9 +114,10 @@ public class BasketballCannonController : MonoBehaviour
         mainCamera = Camera.main;
         ballsRemaining = maxBalls;
         highScore = PlayerPrefs.GetInt(HIGH_SCORE_KEY, 0);
-        gameOverSoundPlayed = false; // Reset the game-over sound flag.
+        gameOverSoundPlayed = false;
         UpdateBallUI();
         UpdateScoreUI();
+        UpdateSuccessfulShotsUI();
         SetupPowerSlider();
         UpdateStatusText("Ssup Hooper! Let's shoot some hoops!");
     }
@@ -188,11 +191,13 @@ public class BasketballCannonController : MonoBehaviour
         {
             Shoot();
             ResetSlider();
-        }
-        else if (ballsRemaining <= 0 && !gameOverSoundPlayed)
-        {
-            gameOverSoundPlayed = true; // Prevent further execution of this block.
-            EvaluateScore();
+
+            // Check if all balls are thrown after shooting
+            if (ballsRemaining <= 0 && !gameOverSoundPlayed)
+            {
+                gameOverSoundPlayed = true;
+                EvaluateScore(); // Evaluate the success rate and switch scenes
+            }
         }
     }
 
@@ -286,34 +291,42 @@ public class BasketballCannonController : MonoBehaviour
     {
         if (ball == null) return;
 
+        successfulShots++;
         AddScore(points);
         UpdateStatusText(successMessages[Random.Range(0, successMessages.Length)]);
         PlaySound(scoreSound);
 
         if (scoreParticleEffect != null) scoreParticleEffect.Play();
         Destroy(ball);
+
+        UpdateSuccessfulShotsUI(); // Update UI for successful shots
+    }
+
+    void UpdateSuccessfulShotsUI()
+    {
+        if (successfulShotsText != null) successfulShotsText.text = "Successful Shots: " + successfulShots;
     }
 
     void AddScore(int points)
     {
         currentScore += points;
-        UpdateScoreUI();
         if (currentScore > highScore)
         {
             highScore = currentScore;
             PlayerPrefs.SetInt(HIGH_SCORE_KEY, highScore);
         }
-    }
-
-    void UpdateBallUI()
-    {
-        if (ballsRemainingText != null) ballsRemainingText.text = "Balls: " + ballsRemaining;
+        UpdateScoreUI();
     }
 
     void UpdateScoreUI()
     {
         if (currentScoreText != null) currentScoreText.text = "Score: " + currentScore;
         if (highScoreText != null) highScoreText.text = "Best: " + highScore;
+    }
+
+    void UpdateBallUI()
+    {
+        if (ballsRemainingText != null) ballsRemainingText.text = "Balls: " + ballsRemaining;
     }
 
     void UpdateStatusText(string message)
@@ -323,8 +336,8 @@ public class BasketballCannonController : MonoBehaviour
 
     void EvaluateScore()
     {
-        float successRate = (float)currentScore / (maxBalls * scoreNetPoints);
-        if (successRate >= 0.333f)
+        float successRate = (float)successfulShots / maxBalls;
+        if (successRate >= 0.33333f) // Example threshold: at least 1/3 of the balls are successful
         {
             UpdateStatusText("Congrats! Moving to the next level!");
             PlaySound(scoreSound);
@@ -340,31 +353,18 @@ public class BasketballCannonController : MonoBehaviour
 
     IEnumerator LoadNextScene()
     {
-        yield return new WaitForSeconds(2f); // Wait for 2 seconds to show message
-        int nextSceneIndex = SceneManager.GetActiveScene().buildIndex + 1;
-        if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
-        {
-            SceneManager.LoadScene(nextSceneIndex);
-        }
-        else
-        {
-            UpdateStatusText("You've completed all levels!"); // Final level message
-        }
+        yield return new WaitForSeconds(2f);
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
     }
 
     IEnumerator ReloadCurrentScene()
     {
-        yield return new WaitForSeconds(2f); // Wait for 2 seconds to show message
+        yield return new WaitForSeconds(2f);
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    // To wrap angles for smooth rotation
     float WrapAngle(float angle)
     {
-        if (angle > 180)
-            angle -= 360;
-        else if (angle < -180)
-            angle += 360;
-        return angle;
+        return (angle > 180) ? angle - 360 : angle;
     }
 }

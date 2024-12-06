@@ -93,6 +93,7 @@ GameObject:
   - component: {fileID: 303935194140143242}
   - component: {fileID: 1379931991877000202}
   - component: {fileID: 7264500688867066061}
+  - component: {fileID: 2980963458249845185}
   m_Layer: 5
   m_Name: Play
   m_TagString: Untagged
@@ -231,3 +232,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   button: {fileID: 303935194140143242}
   targetSceneName: Basket Ball
+--- !u!114 &2980963458249845185
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3949722336026045286}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea3d039e2a77ffd42a7c3bd2a21c98ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speed: 0.1
+  strength: 1
+  multiplier: 1
+  damping: 0
+  reduction: 0
+  shakePosition: {x: 1, y: 1, z: 0}
+  shakeRotation: {x: 0, y: 0, z: 1}
+  offsetPosition: {x: 0, y: 0, z: 0}
+  offsetRotation: {x: 0, y: 0, z: 0}
+  localPosition: {x: 0, y: 0, z: 0}
+  localRotation: {x: 0, y: 0, z: 0, w: 0}
+  expectedPosition: {x: 0, y: 0, z: 0}
+  expectedRotation: {x: 0, y: 0, z: 0, w: 0}
